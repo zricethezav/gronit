@@ -1,12 +1,13 @@
 package main
 
 import (
-	_ "flag"
-	_ "fmt"
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
 	"strings"
 	_ "syscall"
 )
@@ -35,12 +36,18 @@ const usage = `usage: gronit [cmd] &/|| [options]
     --list-yaml 	Sends crontabs to stdout in yaml format
     -l, --list    	Sends crontabs to stdout in human readable form
 
-
   Interfacing: $ gronit [options]
     --remove=N[,..]	Remove gronit task(s)
     -v --version	Version
 
 `
+
+func init() {
+	flag.Usage = func() {
+		fmt.Printf(usage)
+		flag.PrintDefaults()
+	}
+}
 
 type System struct {
 	CronPrefix string
@@ -104,11 +111,62 @@ func help() {
 	os.Exit(1)
 }
 
-func parseArgs() *Options {
+func parseOptions(args []string) *Options {
 	if len(os.Args) < 2 {
 		help()
 	}
-	return &Options{}
+	opts := &Options{}
+
+	// User     string
+	// Port     int
+	// LoadYaml string
+	// LoadJson string
+	// LoadCron string
+
+	loadFile := false
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "-u", "--user":
+			i++
+			opts.User = args[i]
+		case "-p", "--port":
+			i++
+			port, err := strconv.Atoi(args[i])
+			if err != nil {
+				fmt.Printf("Invalid port option: %s\n", args[i])
+				help()
+				return nil
+			}
+			opts.Port = port
+		case "--LoadYaml":
+			i++
+			if !(loadFile) {
+				opts.LoadYaml = args[i]
+				loadFile = true
+			}
+		case "--LoadJson":
+			i++
+			if !(loadFile) {
+				opts.LoadJson = args[i]
+				loadFile = true
+			}
+		case "--LoadCront":
+			i++
+			if !(loadFile) {
+				opts.LoadCron = args[i]
+				loadFile = true
+			}
+		default:
+			fmt.Printf("Uknown option %s\n\n", arg)
+			help()
+			return nil
+		}
+	}
+
+	fmt.Println(opts)
+
+	return opts
 }
 
 func cronPrefix() string {

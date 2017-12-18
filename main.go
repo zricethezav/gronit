@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	_ "flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,39 +15,16 @@ import (
 // https://unix.stackexchange.com/questions/241118/how-to-programmatically-add-new-crontab-file-without-replacing-previous-one
 
 func main() {
+	args := os.Args[1:]
+	if len(args) < 1 {
+		help()
+	}
+	_ = parseOptions(args)
 
 	sys := defaultSys()
 	fmt.Println(sys)
-	parseArgs()
 	os.Exit(1)
 
-	// Subcommands
-	startCommand := flag.NewFlagSet("start", flag.ExitOnError)
-	restartCommand := flag.NewFlagSet("restart", flag.ExitOnError)
-	stopCommand := flag.NewFlagSet("stop", flag.ExitOnError)
-
-	// Verify that a subcommand has been provided
-	// os.Arg[0] is the main command
-	// os.Arg[1] will be the subcommand
-	if len(os.Args) < 2 {
-		fmt.Printf(usage)
-		os.Exit(1)
-	}
-
-	switch os.Args[1] {
-	case "update":
-		fmt.Printf("Updating")
-		update()
-	case "start":
-		startCommand.Parse(os.Args[2:])
-	case "stop":
-		stopCommand.Parse(os.Args[2:])
-	case "restart":
-		restartCommand.Parse(os.Args[2:])
-	default:
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
 }
 
 func update() {
