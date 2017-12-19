@@ -1,8 +1,9 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -12,17 +13,10 @@ import (
 	_ "syscall"
 )
 
-const usage = `usage: gronit [cmd] &/|| [options]
+const EMPTYSTR string = ""
 
-  Start: $ gronit start [options]
-    -u --user	Select which user to update cron for
-    -p --port	Which port to start service on
+const usage = `usage: gronit [options]
 
-  Restart: $ gronit restart [options]
-
-  Stop: $ gronit start [options]
-  
-  Add: $ gronit [options]
     -u --user		Select which user to update cron
     --loadyaml		Yaml file that contains a schedule
     --loadjson		JSON file that contains a schedule
@@ -31,23 +25,13 @@ const usage = `usage: gronit [cmd] &/|| [options]
 	  * default cron path for osx: /var/at/tabs/$USER
 	  * default cron path for linux: /etc/cron.d/$USER
 
-  Display: $ gronit [options]
     --list-json 	Sends crontabs to stdout in json format
     --list-yaml 	Sends crontabs to stdout in yaml format
     -l, --list    	Sends crontabs to stdout in human readable form
 
-  Interfacing: $ gronit [options]
-    --remove=N[,..]	Remove gronit task(s)
     -v --version	Version
 
 `
-
-func init() {
-	flag.Usage = func() {
-		fmt.Printf(usage)
-		flag.PrintDefaults()
-	}
-}
 
 type System struct {
 	CronPrefix string
@@ -64,16 +48,17 @@ type Options struct {
 }
 
 type Task struct {
-	DoEverySecond int
-	DoEveryMinute int
-	DoEveryHour   int
-	DoEveryDay    int
-	DoEveryMonth  int
-	Cmd           string
-	Heartbeat     bool
-	Monitor       bool
+	Name          string `yaml:"name"`
+	Second        string `yaml:"second"`
+	DoEveryMinute string `yaml:"minute"`
+	DoEveryHour   string `yaml:"hour"`
+	DoEveryDay    string `yaml:"day"`
+	DoEveryMonth  string `yaml:"month"`
+	Command       string `yaml:"command"`
 }
 
+// defaultSys fills a System struct with path to the crontab directory,
+// default username, and type of system (macOS or Linux from `uname`)
 func defaultSys() *System {
 	var (
 		cronPrefix string
@@ -81,80 +66,90 @@ func defaultSys() *System {
 		err        error
 	)
 
-	usr, err := user.Current()
+	_user, err := user.Current()
 	if err != nil {
 		log.Fatal(err)
 	}
-	usrName := usr.Username
+	userName := _user.Username
 
 	if uname, err = exec.Command("uname").Output(); err != nil {
 		log.Fatal(err)
 	}
-	unameStr := strings.TrimSpace(string(uname))
+	unameString := strings.TrimSpace(string(uname))
 
-	if unameStr == "Darwin" {
+	if unameString == "Darwin" {
 		cronPrefix = "/var/at/tabs/"
-
-	} else if unameStr == "Linux" {
+	} else if unameString == "Linux" {
 		cronPrefix = "/etc/cron.d/"
 	}
 
 	return &System{
 		CronPrefix: cronPrefix,
-		OS:         unameStr,
-		User:       usrName,
+		OS:         unameString,
+		User:       userName,
 	}
 }
 
+// help prints the usage string and exits
 func help() {
 	os.Stderr.WriteString(usage)
 	os.Exit(1)
 }
 
-func parseOptions(args []string) *Options {
-	if len(os.Args) < 2 {
+// optionsNextInt is a parseOptions helper that returns the value (int) of an option
+// if valid.
+func optionsNextInt(args []string, i *int) int {
+	if len(args) > *i+1 {
+		*i++
+	} else {
 		help()
 	}
+	argInt, err := strconv.Atoi(args[*i])
+	if err != nil {
+		fmt.Printf("Invalid %s option: %s\n", args[*i-1], args[*i])
+		help()
+	}
+	return argInt
+}
+
+// optionsNextString is a parseOptions helper that returns the value (string) of an option
+// if valid.
+func optionsNextString(args []string, i *int) string {
+	if len(args) > *i+1 {
+		*i++
+	} else {
+		help()
+	}
+
+	return args[*i]
+
+}
+
+// parseOptions
+func parseOptions(defaultSys *System, args []string) *Options {
 	opts := &Options{}
-
-	// User     string
-	// Port     int
-	// LoadYaml string
-	// LoadJson string
-	// LoadCron string
-
 	loadFile := false
+
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch arg {
 		case "-u", "--user":
-			i++
-			opts.User = args[i]
+			opts.User = optionsNextString(args, &i)
 		case "-p", "--port":
-			i++
-			port, err := strconv.Atoi(args[i])
-			if err != nil {
-				fmt.Printf("Invalid port option: %s\n", args[i])
-				help()
-				return nil
-			}
-			opts.Port = port
-		case "--LoadYaml":
-			i++
+			opts.Port = optionsNextInt(args, &i)
+		case "--loadyaml":
 			if !(loadFile) {
-				opts.LoadYaml = args[i]
+				opts.LoadYaml = optionsNextString(args, &i)
 				loadFile = true
 			}
-		case "--LoadJson":
-			i++
+		case "--loadjson":
 			if !(loadFile) {
-				opts.LoadJson = args[i]
+				opts.LoadYaml = optionsNextString(args, &i)
 				loadFile = true
 			}
-		case "--LoadCront":
-			i++
+		case "--loadcron":
 			if !(loadFile) {
-				opts.LoadCron = args[i]
+				opts.LoadYaml = optionsNextString(args, &i)
 				loadFile = true
 			}
 		default:
@@ -164,23 +159,72 @@ func parseOptions(args []string) *Options {
 		}
 	}
 
-	fmt.Println(opts)
+	if opts.User == "" {
+		opts.User = defaultSys.User
+	}
 
 	return opts
 }
 
-func cronPrefix() string {
-	return ""
+// getTasks parses the system infromation and options to build a slice
+// of Tasks. A slice of Tasks is returned.
+func getTasks(sys *System, opts *Options) []Task {
+	var tasks []Task
+
+	if opts.LoadYaml != EMPTYSTR {
+		yamlToTasks(&tasks, opts)
+	} else if opts.LoadJson != EMPTYSTR {
+		// open yaml file
+		// parse yaml for jobs
+	} else if opts.LoadCron != EMPTYSTR {
+		// open yaml file
+		// parse yaml for jobs
+	}
+	return tasks
 }
 
-func yamlToTask() *Task {
+// yamlToTasks is a helper for getTasks. This function reads a yaml file
+// then marshals it into an slice of Tasks.
+func yamlToTasks(tasks *[]Task, opts *Options) {
+	yamlFile, err := ioutil.ReadFile(opts.LoadYaml)
+	if err != nil {
+		log.Printf("Error reading %s: %v ", opts.LoadYaml, err)
+	}
+	err = yaml.Unmarshal(yamlFile, &tasks)
+	if err != nil {
+		log.Fatalf("Unmarshal: %v", err)
+	}
+}
+
+// jsonToTasks is a helper for getTasks. This function reads a json file
+// then marshals it into an slice of Tasks.
+func jsonToTasks() *Task {
 	return &Task{}
 }
 
-func jsonToTask() *Task {
-	return &Task{}
-}
-
+// cronToTasks is a helper for getTasks. This function reads a cron text file
+// then marshals it into a slice of Tasks. Note: example of a cron text is `crontab -l`
 func cronToTask() *Task {
 	return &Task{}
+}
+
+// taskToCron TODO
+func tasksToCron(tasks []Task, sys *System) {
+	var cronBytes []byte
+
+	tmpfile, err := ioutil.TempFile("", "gronit_tmp")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	for _, task := range tasks {
+		fmt.Println(task)
+		// TODO finish this up
+	}
+
+	if _, err := tmpfile.Write(cronBytes); err != nil {
+		log.Fatal(err)
+	}
+	// TODO read current cron, check for duplicates, print suggestions, cp
 }

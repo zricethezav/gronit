@@ -1,5 +1,8 @@
 package main
 
+// gronit
+// [go]cron[monitor]
+
 import (
 	_ "flag"
 	"fmt"
@@ -8,25 +11,26 @@ import (
 	"os"
 )
 
-// gronit
-// [go]cron[monitor]
-
-// BASIC IDEA OF UPDATING:
-// https://unix.stackexchange.com/questions/241118/how-to-programmatically-add-new-crontab-file-without-replacing-previous-one
-
 func main() {
 	args := os.Args[1:]
 	if len(args) < 1 {
 		help()
+		os.Exit(1)
 	}
-	_ = parseOptions(args)
 
 	sys := defaultSys()
-	fmt.Println(sys)
+	opts := parseOptions(sys, args)
+	tasks := getTasks(sys, opts)
+
+	if opts.LoadYaml != EMPTYSTR || opts.LoadJson != EMPTYSTR || opts.LoadCron != EMPTYSTR {
+		tasksToCron(tasks, sys)
+	}
+
 	os.Exit(1)
 
 }
 
+// update TODO
 func update() {
 	// PROTOTYPE:
 	// okay now we can write to cron, need to pass in arguments like:
