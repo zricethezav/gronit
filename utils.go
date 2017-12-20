@@ -48,13 +48,13 @@ type Options struct {
 }
 
 type Task struct {
-	Name          string `yaml:"name"`
-	Second        string `yaml:"second"`
-	DoEveryMinute string `yaml:"minute"`
-	DoEveryHour   string `yaml:"hour"`
-	DoEveryDay    string `yaml:"day"`
-	DoEveryMonth  string `yaml:"month"`
-	Command       string `yaml:"command"`
+	Name    string `yaml:"name"`
+	Second  string `yaml:"second"`
+	Minute  string `yaml:"minute"`
+	Hour    string `yaml:"hour"`
+	Day     string `yaml:"day"`
+	Month   string `yaml:"month"`
+	Command string `yaml:"command"`
 }
 
 // defaultSys fills a System struct with path to the crontab directory,
@@ -78,7 +78,8 @@ func defaultSys() *System {
 	unameString := strings.TrimSpace(string(uname))
 
 	if unameString == "Darwin" {
-		cronPrefix = "/var/at/tabs/"
+		// cronPrefix = "/var/at/tabs/"
+		cronPrefix = "/usr/lib/cron/tabs/"
 	} else if unameString == "Linux" {
 		cronPrefix = "/etc/cron.d/"
 	}
@@ -120,9 +121,7 @@ func optionsNextString(args []string, i *int) string {
 	} else {
 		help()
 	}
-
 	return args[*i]
-
 }
 
 // parseOptions
@@ -135,6 +134,7 @@ func parseOptions(defaultSys *System, args []string) *Options {
 		switch arg {
 		case "-u", "--user":
 			opts.User = optionsNextString(args, &i)
+			defaultSys.User = opts.User
 		case "-p", "--port":
 			opts.Port = optionsNextInt(args, &i)
 		case "--loadyaml":
@@ -211,6 +211,7 @@ func cronToTask() *Task {
 // taskToCron TODO
 func tasksToCron(tasks []Task, sys *System) {
 	var cronBytes []byte
+	var cronTaskString string
 
 	tmpfile, err := ioutil.TempFile("", "gronit_tmp")
 	if err != nil {
@@ -219,12 +220,22 @@ func tasksToCron(tasks []Task, sys *System) {
 	defer os.Remove(tmpfile.Name())
 
 	for _, task := range tasks {
-		fmt.Println(task)
-		// TODO finish this up
+		cronTaskString = fmt.Sprintf("%s %s %s %s %s %s\n",
+			task.Second, task.Minute, task.Hour, task.Day,
+			task.Month, task.Command)
+		cronBytes = append(cronBytes, []byte(cronTaskString)...)
 	}
+	fmt.Printf("%s", cronBytes)
 
 	if _, err := tmpfile.Write(cronBytes); err != nil {
 		log.Fatal(err)
 	}
+
 	// TODO read current cron, check for duplicates, print suggestions, cp
+	pathToCron := fmt.Sprintf("%s%s", sys.CronPrefix, sys.User)
+	content, err := ioutil.ReadFile(pathToCron)
+	fmt.Println("yooo")
+	fmt.Println(pathToCron)
+	fmt.Printf("%s", content)
+	fmt.Println(content)
 }
