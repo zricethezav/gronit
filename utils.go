@@ -96,8 +96,9 @@ func tasksToCron(tasks []Task, sys *System) {
 		log.Fatal(err)
 	}
 
-	err = exec.Command("crontab", "/tmp/gronit").Run()
+	err = exec.Command("crontab", "-u", sys.User, "/tmp/gronit").Run()
 	if err != nil {
+		fmt.Printf("user %s does not exist\n", sys.User)
 		log.Fatal(err)
 	}
 

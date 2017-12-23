@@ -19,6 +19,13 @@ func main() {
 
 	sys := defaultSys()
 	opts := parseOptions(sys, args)
+	if opts.Start {
+		serverStart(sys, opts)
+	} else if opts.Restart {
+		// Try to restart
+	} else if opts.Stop {
+		// Try to stop
+	}
 
 	// non service, using util to add tasks
 	tasks := getTasks(sys, opts)

@@ -35,6 +35,8 @@ Options:
 
 `
 
+const defaultPort = 3231
+
 type System struct {
 	CronPrefix string
 	OS         string
@@ -114,11 +116,11 @@ func parseOptions(defaultSys *System, args []string) *Options {
 		arg := args[i]
 		switch arg {
 		case "start":
-			continue
+			opts.Start = true
 		case "restart":
-			continue
+			opts.Stop = true
 		case "stop":
-			continue
+			opts.Restart = true
 		case "-u", "--user":
 			opts.User = optionsNextString(args, &i)
 			defaultSys.User = opts.User
@@ -146,8 +148,11 @@ func parseOptions(defaultSys *System, args []string) *Options {
 		}
 	}
 
-	if opts.User == "" {
+	if opts.User == EMPTYSTR {
 		opts.User = defaultSys.User
+	}
+	if opts.Port == 0 {
+		opts.Port = defaultPort
 	}
 
 	return opts
