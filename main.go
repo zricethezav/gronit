@@ -10,6 +10,8 @@ import (
 
 const EMPTYSTR string = ""
 
+var sys *System
+
 func main() {
 	args := os.Args[1:]
 	if len(args) < 1 {
@@ -17,7 +19,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	sys := defaultSys()
+	sys = defaultSys()
 	opts := parseOptions(sys, args)
 	if opts.Start {
 		serverStart(sys, opts)

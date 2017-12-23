@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -20,6 +22,8 @@ const serverStartMsg = `
 
 `
 
+var mu sync.Mutex
+
 // serverStart starts the gronit server which routes a few
 // paths: add, update, list, remove, logs
 func serverStart(sys *System, opts *Options) {
@@ -37,16 +41,31 @@ func serverStart(sys *System, opts *Options) {
 }
 
 func serverStop(sys *System, opts *Options) {
-	// TODO
+	// TODO find process server running on and stop
 }
 
 func serverRestart(sys *System, opts *Options) {
-	// TODO
+	// TODO find process server running on and restart
 }
 
 func add(w http.ResponseWriter, r *http.Request) {
+	var tasks []Task
+	if r.Method == "POST" {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Error reading request body", http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintf(w, string(body))
+		err = json.Unmarshal(body, &tasks)
+		if err != nil {
+			http.Error(w, "Error reading request body into Tasks", http.StatusInternalServerError)
+			return
+		}
+	}
+
 	mu.Lock()
-	// TODO
+	tasksToCron(tasks, sys)
 	mu.Unlock()
 }
 
