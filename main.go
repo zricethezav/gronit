@@ -25,6 +25,4 @@ func main() {
 	if opts.LoadYaml != EMPTYSTR || opts.LoadJson != EMPTYSTR || opts.LoadCron != EMPTYSTR {
 		tasksToCron(tasks, sys)
 	}
-
-	os.Exit(1)
 }

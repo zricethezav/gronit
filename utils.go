@@ -7,7 +7,8 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
-	"os"
+	_ "os"
+	"os/exec"
 	_ "syscall"
 )
 
@@ -73,20 +74,13 @@ func cronToTask() *Task {
 
 // taskToCron writes out tasks to crontab
 func tasksToCron(tasks []Task, sys *System) {
-	var cronBytes []byte
-	var cronTaskString string
+	var (
+		cronTaskString string
+		crontab        []byte
+		err            error
+	)
 
-	pathToCron := fmt.Sprintf("%s%s", sys.CronPrefix, sys.User)
-	content, err := ioutil.ReadFile(pathToCron)
-	if err != nil {
-		fmt.Printf("\nno crontab for %s. You may need to run `sudo crontab -e -u %s`\nto initiate cron\n\n",
-			sys.User, sys.User)
-		log.Fatal(err)
-	}
-	file, err := os.Open(pathToCron)
-	defer file.Close()
-
-	if err != nil {
+	if crontab, err = exec.Command("crontab", "-l").Output(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -94,12 +88,21 @@ func tasksToCron(tasks []Task, sys *System) {
 		cronTaskString = fmt.Sprintf("%s %s %s %s %s %s\n",
 			task.Second, task.Minute, task.Hour, task.Day,
 			task.Month, task.Command)
-		cronBytes = append(cronBytes, []byte(cronTaskString)...)
+		crontab = append(crontab, []byte(cronTaskString)...)
 	}
 
-	fmt.Printf("\nAdding the following cronjobs to crontab for %s:\n\n%s", sys.User, cronBytes[:])
-	if err := ioutil.WriteFile(pathToCron,
-		append(content[:], cronBytes[:]...), 0777); err != nil {
+	err = ioutil.WriteFile("/tmp/gronit", crontab, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = exec.Command("crontab", "/tmp/gronit").Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = exec.Command("rm", "/tmp/gronit").Run()
+	if err != nil {
 		log.Fatal(err)
 	}
 }

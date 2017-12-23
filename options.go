@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"os/user"
 	"strconv"
-	"strings"
 	_ "syscall"
 )
 
@@ -59,7 +57,6 @@ type Options struct {
 func defaultSys() *System {
 	var (
 		cronPrefix string
-		uname      []byte
 		err        error
 	)
 
@@ -69,21 +66,8 @@ func defaultSys() *System {
 	}
 	userName := _user.Username
 
-	if uname, err = exec.Command("uname").Output(); err != nil {
-		log.Fatal(err)
-	}
-	unameString := strings.TrimSpace(string(uname))
-
-	if unameString == "Darwin" {
-		// cronPrefix = "/var/at/tabs/"
-		cronPrefix = "/usr/lib/cron/tabs/"
-	} else if unameString == "Linux" {
-		cronPrefix = "/etc/cron.d/"
-	}
-
 	return &System{
 		CronPrefix: cronPrefix,
-		OS:         unameString,
 		User:       userName,
 	}
 }
