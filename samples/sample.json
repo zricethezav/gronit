@@ -1,0 +1,20 @@
+[
+    {
+        "name": "job1",
+        "second": "*",
+        "minute": "*",
+        "hour": "*",
+        "day": "*",
+        "month": "*",
+        "command": "echo \"json1 out\""
+    },
+    {
+        "name": "job2",
+        "second": "*",
+        "minute": "1,2,3,4,5",
+        "hour": "*",
+        "day": "*",
+        "month": "*",
+        "command": "echo \"json2 out\""
+    }
+]

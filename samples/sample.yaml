@@ -12,4 +12,11 @@
   day: "*"
   month: "*"
   command: "echo second"
+- name: "job2"
+  second: "*"
+  minute: "*"
+  hour: "*"
+  day: "*"
+  month: "*"
+  command: "echo \"lol\" > $HOME/tmp"
 
