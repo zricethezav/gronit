@@ -11,6 +11,7 @@ import (
 const EMPTYSTR string = ""
 
 var sys *System
+var opts *Options
 
 func main() {
 	args := os.Args[1:]
@@ -32,6 +33,6 @@ func main() {
 	// non service, using util to add tasks
 	tasks := getTasks(sys, opts)
 	if opts.LoadYaml != EMPTYSTR || opts.LoadJson != EMPTYSTR || opts.LoadCron != EMPTYSTR {
-		tasksToCron(tasks, sys)
+		tasksToCron(tasks, sys, opts)
 	}
 }

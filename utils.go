@@ -73,7 +73,7 @@ func cronToTask() *Task {
 }
 
 // taskToCron writes out tasks to crontab
-func tasksToCron(tasks []Task, sys *System) {
+func tasksToCron(tasks []Task, sys *System, opts *Options) {
 	var (
 		cronTaskString string
 		crontab        []byte
@@ -96,7 +96,11 @@ func tasksToCron(tasks []Task, sys *System) {
 		log.Fatal(err)
 	}
 
-	err = exec.Command("crontab", "-u", sys.User, "/tmp/gronit").Run()
+	if sys.User == "root" && opts.User != EMPTYSTR {
+		err = exec.Command("crontab", "-u", opts.User, "/tmp/gronit").Run()
+	} else {
+		err = exec.Command("crontab", "/tmp/gronit").Run()
+	}
 	if err != nil {
 		fmt.Printf("user %s does not exist\n", sys.User)
 		log.Fatal(err)

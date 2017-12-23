@@ -65,7 +65,7 @@ func add(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mu.Lock()
-	tasksToCron(tasks, sys)
+	tasksToCron(tasks, sys, opts)
 	mu.Unlock()
 }
 

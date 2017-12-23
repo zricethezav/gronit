@@ -67,6 +67,7 @@ func defaultSys() *System {
 		log.Fatal(err)
 	}
 	userName := _user.Username
+	fmt.Println(userName)
 
 	return &System{
 		CronPrefix: cronPrefix,
@@ -123,7 +124,6 @@ func parseOptions(defaultSys *System, args []string) *Options {
 			opts.Restart = true
 		case "-u", "--user":
 			opts.User = optionsNextString(args, &i)
-			defaultSys.User = opts.User
 		case "-p", "--port":
 			opts.Port = optionsNextInt(args, &i)
 		case "--loadyaml":
