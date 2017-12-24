@@ -21,7 +21,7 @@ func main() {
 	}
 
 	sys = defaultSys()
-	opts := parseOptions(sys, args)
+	opts = parseOptions(sys, args)
 	if opts.Start {
 		serverStart(sys, opts)
 	} else if opts.Restart {

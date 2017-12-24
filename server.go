@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os/exec"
 	"strconv"
 	"sync"
 )
@@ -34,10 +35,8 @@ func serverStart(sys *System, opts *Options) {
 	http.HandleFunc("/list", list)
 	http.HandleFunc("/remove", remove)
 	http.HandleFunc("/logs", logs)
-
 	host := fmt.Sprintf("localhost:%s", strconv.Itoa(opts.Port))
 	log.Fatal(http.ListenAndServe(host, nil))
-
 }
 
 func serverStop(sys *System, opts *Options) {
@@ -76,7 +75,14 @@ func update(w http.ResponseWriter, r *http.Request) {
 }
 
 func list(w http.ResponseWriter, r *http.Request) {
-	// TODO finish and put in handlers
+	var crontab []byte
+	var err error
+	if r.Method == "GET" {
+		if crontab, err = exec.Command("crontab", "-l").Output(); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Fprintf(w, string(crontab))
+	}
 }
 
 func remove(w http.ResponseWriter, r *http.Request) {
