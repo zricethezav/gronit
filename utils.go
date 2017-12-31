@@ -2,9 +2,12 @@ package main
 
 import (
 	_ "bufio"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"hash"
 	"io/ioutil"
 	"log"
 	_ "os"
@@ -19,6 +22,7 @@ type Task struct {
 	Hour    string `yaml:"hour" json:"hour"`
 	Day     string `yaml:"day" json:"day"`
 	Month   string `yaml:"month" json:"month"`
+	Monitor bool   `yaml:"monitor" json:"monitor"`
 	Command string `yaml:"command" json:"command"`
 }
 
@@ -70,6 +74,27 @@ func jsonToTasks(tasks *[]Task, opts *Options) {
 func cronToTask() *Task {
 	// TODO
 	return &Task{}
+}
+
+// applyCompleteTask iterates tasks and checks if monitor is available
+func applyMonitor(tasks []Task) {
+	var h hash.Hash
+	var taskStr string
+	var token string
+	for _, task := range tasks {
+		if task.Monitor {
+			h = md5.New()
+			taskStr = fmt.Sprintf("%v", task)
+			token = hex.EncodeToString(h.Sum([]byte(taskStr)))
+			fmt.Println(token)
+
+			// TODO
+			// 1 generate hash
+			// map hash to command in datastructure in server.go
+			fmt.Println(task)
+
+		}
+	}
 }
 
 // taskToCron writes out tasks to crontab

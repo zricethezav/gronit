@@ -63,7 +63,10 @@ func add(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	applyMonitor(tasks)
 	mu.Lock()
+	// TODO iter tasks check if any commands want to be monitored
+	// TODO respond with complete hash
 	tasksToCron(tasks, sys, opts)
 	mu.Unlock()
 }
@@ -92,5 +95,9 @@ func remove(w http.ResponseWriter, r *http.Request) {
 }
 
 func logs(w http.ResponseWriter, r *http.Request) {
+	// TODO finish and put in handlers
+}
+
+func complete(w http.ResponseWriter, r *http.Request) {
 	// TODO finish and put in handlers
 }
