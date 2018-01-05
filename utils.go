@@ -2,17 +2,18 @@ package main
 
 import (
 	_ "bufio"
-	"crypto/md5"
-	"encoding/hex"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"gopkg.in/yaml.v2"
-	"hash"
+	_ "hash"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	_ "os"
 	"os/exec"
 	_ "syscall"
+	"time"
 )
 
 type Task struct {
@@ -78,21 +79,19 @@ func cronToTask() *Task {
 
 // applyCompleteTask iterates tasks and checks if monitor is available
 func applyMonitor(tasks []Task) {
-	var h hash.Hash
-	var taskStr string
-	var token string
+	rand.Seed(time.Now().UTC().UnixNano())
+	h := sha256.New()
+	var randomInt int
 	for _, task := range tasks {
 		if task.Monitor {
-			h = md5.New()
-			taskStr = fmt.Sprintf("%v", task)
-			token = hex.EncodeToString(h.Sum([]byte(taskStr)))
-			fmt.Println(token)
+			randomInt = rand.Intn(10000000)
+			h.Write([]byte(fmt.Sprintf("%d", randomInt)))
+			task.Command = fmt.Sprintf("%s %x", task.Command, h.Sum(nil))
+			// fmt.Printf("%x", h.Sum(nil))
 
 			// TODO
-			// 1 generate hash
 			// map hash to command in datastructure in server.go
 			fmt.Println(task)
-
 		}
 	}
 }
