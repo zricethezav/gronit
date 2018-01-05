@@ -15,4 +15,5 @@ curl -H 'Content-Type:application/json' -d \
  \"minute\":\"*\",
  \"day\":\"*\",
  \"month\":\"*\",
+ \"monitor\":true,
  \"command\":\"echo no monitor\"}]" http://localhost:3231/add
