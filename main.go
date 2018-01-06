@@ -5,6 +5,7 @@ package main
 
 import (
 	_ "flag"
+	"log"
 	"os"
 )
 
@@ -20,19 +21,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	db, err := setupDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
 	sys = defaultSys()
 	opts = parseOptions(sys, args)
-	if opts.Start {
-		serverStart(sys, opts)
-	} else if opts.Restart {
-		// Try to restart
-	} else if opts.Stop {
-		// Try to stop
-	}
-
-	// non service, using util to add tasks
-	tasks := getTasks(sys, opts)
-	if opts.LoadYaml != EMPTYSTR || opts.LoadJson != EMPTYSTR || opts.LoadCron != EMPTYSTR {
-		tasksToCron(tasks, sys, opts)
-	}
+	serverStart(sys, opts, db)
 }

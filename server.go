@@ -1,14 +1,18 @@
 package main
 
 import (
-	"encoding/json"
+	"crypto/sha256"
+	_ "encoding/json"
 	"fmt"
-	"io/ioutil"
+	"github.com/boltdb/bolt"
+	_ "io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
-	"os/exec"
+	_ "os/exec"
 	"strconv"
 	"sync"
+	"time"
 )
 
 const serverStartMsg = `
@@ -24,17 +28,18 @@ const serverStartMsg = `
 `
 
 var mu sync.Mutex
+var db *bolt.DB
 
 // serverStart starts the gronit server which routes a few
 // paths: add, update, list, remove, logs
-func serverStart(sys *System, opts *Options) {
+func serverStart(sys *System, opts *Options, _db *bolt.DB) {
+	db = _db
 	fmt.Printf("%s", serverStartMsg)
 	http.HandleFunc("/", list) // default to list
-	http.HandleFunc("/add", add)
-	http.HandleFunc("/update", update)
+	http.HandleFunc("/create", create)
+	http.HandleFunc("/start", start)
+	http.HandleFunc("/complete", complete)
 	http.HandleFunc("/list", list)
-	http.HandleFunc("/remove", remove)
-	http.HandleFunc("/logs", logs)
 	host := fmt.Sprintf("localhost:%s", strconv.Itoa(opts.Port))
 	log.Fatal(http.ListenAndServe(host, nil))
 }
@@ -47,54 +52,30 @@ func serverRestart(sys *System, opts *Options) {
 	// TODO find process server running on and restart
 }
 
-func add(w http.ResponseWriter, r *http.Request) {
-	var tasks []Task
-	if r.Method == "POST" {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Error reading request body", http.StatusInternalServerError)
-			return
-		}
-		fmt.Fprintf(w, string(body))
-		err = json.Unmarshal(body, &tasks)
-		if err != nil {
-			http.Error(w, "Error reading request body into Tasks", http.StatusInternalServerError)
-			return
-		}
+func create(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		rand.Seed(time.Now().UTC().UnixNano())
+		h := sha256.New()
+		randomInt := rand.Intn(10000000)
+		h.Write([]byte(fmt.Sprintf("%d", randomInt)))
+		token := fmt.Sprintf("%x\n", h.Sum(nil)[:3])
+		fmt.Fprintf(w, string(token))
+		// todo add to cache
+		// map of token:cronjob data
+		_ = set(token, []byte(""))
 	}
 
-	applyMonitor(tasks)
-	mu.Lock()
-	// TODO iter tasks check if any commands want to be monitored
-	// TODO respond with complete hash
-	tasksToCron(tasks, sys, opts)
-	mu.Unlock()
-}
-
-func update(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	// TODO
-	mu.Unlock()
+	// running
+	// completed
 }
 
 func list(w http.ResponseWriter, r *http.Request) {
-	var crontab []byte
-	var err error
-	if r.Method == "GET" {
-		if crontab, err = exec.Command("crontab", "-l").Output(); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Fprintf(w, string(crontab))
-	}
+	// break out
+	_ = listBucket(db)
+
 }
 
-func remove(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	// TODO
-	mu.Unlock()
-}
-
-func logs(w http.ResponseWriter, r *http.Request) {
+func start(w http.ResponseWriter, r *http.Request) {
 	// TODO finish and put in handlers
 }
 
