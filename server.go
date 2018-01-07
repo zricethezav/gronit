@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	_ "os/exec"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -35,11 +36,12 @@ var db *bolt.DB
 func serverStart(sys *System, opts *Options, _db *bolt.DB) {
 	db = _db
 	fmt.Printf("%s", serverStartMsg)
-	http.HandleFunc("/", list) // default to list
+	http.HandleFunc("/", status) // default to list
 	http.HandleFunc("/create", create)
-	http.HandleFunc("/start", start)
-	http.HandleFunc("/complete", complete)
-	http.HandleFunc("/list", list)
+	http.HandleFunc("/run/", run)
+	http.HandleFunc("/complete/", complete)
+	http.HandleFunc("/status", status)
+	http.HandleFunc("/history", history)
 	host := fmt.Sprintf("localhost:%s", strconv.Itoa(opts.Port))
 	log.Fatal(http.ListenAndServe(host, nil))
 }
@@ -52,33 +54,61 @@ func serverRestart(sys *System, opts *Options) {
 	// TODO find process server running on and restart
 }
 
+// create yooo
 func create(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		rand.Seed(time.Now().UTC().UnixNano())
 		h := sha256.New()
 		randomInt := rand.Intn(10000000)
 		h.Write([]byte(fmt.Sprintf("%d", randomInt)))
-		token := fmt.Sprintf("%x\n", h.Sum(nil)[:3])
-		fmt.Fprintf(w, string(token))
-		// todo add to cache
-		// map of token:cronjob data
-		_ = set(token, []byte(""))
+		key := fmt.Sprintf("%x", h.Sum(nil)[:3])
+		fmt.Fprintf(w, string(key))
+		_ = initEntry(key, db)
 	}
-
-	// running
-	// completed
 }
 
-func list(w http.ResponseWriter, r *http.Request) {
-	// break out
-	_ = listBucket(db)
-
+// getKey extracts a job key and returns an error if invalid url
+func getKey(label string, r *http.Request) (string, error) {
+	regex := fmt.Sprintf("^/(%s)/([a-zA-Z0-9]+)$", label)
+	var validPath = regexp.MustCompile(regex)
+	m := validPath.FindStringSubmatch(r.URL.Path)
+	if m == nil {
+		return "", fmt.Errorf("could not extract key from path %s", r.URL.Path)
+	}
+	return m[2], nil
 }
 
-func start(w http.ResponseWriter, r *http.Request) {
-	// TODO finish and put in handlers
+// status returns the status of the job
+func status(w http.ResponseWriter, r *http.Request) {
+	key, err := getKey("status", r)
+	if err != nil {
+		fmt.Println("error")
+	}
+	getStatus(key, db)
 }
 
+// run some things
+func run(w http.ResponseWriter, r *http.Request) {
+	key, err := getKey("run", r)
+	if err != nil {
+		fmt.Println("error")
+	}
+	setStatus(key, "running", time.Now(), db)
+}
+
+// complete
 func complete(w http.ResponseWriter, r *http.Request) {
-	// TODO finish and put in handlers
+	key, err := getKey("complete", r)
+	if err != nil {
+		fmt.Println("error")
+	}
+	setStatus(key, "complete", time.Now(), db)
+}
+
+// history returns the full history of the job
+func history(w http.ResponseWriter, r *http.Request) {
+	_, err := getKey("history", r)
+	if err != nil {
+		fmt.Println("error")
+	}
 }
