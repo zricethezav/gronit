@@ -18,20 +18,8 @@ Arguments:
     stop 		Stops gronit server
 	
 Options:
-    -u --user		Select which user to update cron
-    --loadyaml		Yaml file that contains a schedule
-    --loadjson		JSON file that contains a schedule
-    --loadcron		cron file that contains a schedule
-    --path        	path to crontab:
-	  * default cron path for osx: /var/at/tabs/$USER
-	  * default cron path for linux: /etc/cron.d/$USER
-
-    --list-json 	Sends crontabs to stdout in json format
-    --list-yaml 	Sends crontabs to stdout in yaml format
-    -l, --list    	Sends crontabs to stdout in human readable form
-
-    -v --version	Version
     -p --port 		Port to run server on
+    -h --help 		Display this message
 
 `
 
@@ -44,14 +32,10 @@ type System struct {
 }
 
 type Options struct {
-	Start    bool
-	Stop     bool
-	Restart  bool
-	User     string
-	Port     int
-	LoadYaml string
-	LoadJson string
-	LoadCron string
+	Start   bool
+	Stop    bool
+	Restart bool
+	Port    int
 }
 
 // defaultSys fills a System struct with path to the crontab directory,
@@ -111,7 +95,6 @@ func optionsNextString(args []string, i *int) string {
 // parseOptions
 func parseOptions(defaultSys *System, args []string) *Options {
 	opts := &Options{}
-	loadFile := false
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -122,25 +105,11 @@ func parseOptions(defaultSys *System, args []string) *Options {
 			opts.Stop = true
 		case "stop":
 			opts.Restart = true
-		case "-u", "--user":
-			opts.User = optionsNextString(args, &i)
 		case "-p", "--port":
 			opts.Port = optionsNextInt(args, &i)
-		case "--loadyaml":
-			if !(loadFile) {
-				opts.LoadYaml = optionsNextString(args, &i)
-				loadFile = true
-			}
-		case "--loadjson":
-			if !(loadFile) {
-				opts.LoadJson = optionsNextString(args, &i)
-				loadFile = true
-			}
-		case "--loadcron":
-			if !(loadFile) {
-				opts.LoadYaml = optionsNextString(args, &i)
-				loadFile = true
-			}
+		case "-h", "--help":
+			help()
+			return nil
 		default:
 			fmt.Printf("Uknown option %s\n\n", arg)
 			help()
@@ -148,9 +117,6 @@ func parseOptions(defaultSys *System, args []string) *Options {
 		}
 	}
 
-	if opts.User == EMPTYSTR {
-		opts.User = defaultSys.User
-	}
 	if opts.Port == 0 {
 		opts.Port = defaultPort
 	}

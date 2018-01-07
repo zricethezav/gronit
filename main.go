@@ -16,10 +16,6 @@ var opts *Options
 
 func main() {
 	args := os.Args[1:]
-	if len(args) < 1 {
-		help()
-		os.Exit(1)
-	}
 
 	db, err := setupDB()
 	if err != nil {

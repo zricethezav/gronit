@@ -2,14 +2,12 @@ package main
 
 import (
 	"crypto/sha256"
-	_ "encoding/json"
+	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
-	_ "io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
-	_ "os/exec"
 	"regexp"
 	"strconv"
 	"sync"
@@ -36,11 +34,10 @@ var db *bolt.DB
 func serverStart(sys *System, opts *Options, _db *bolt.DB) {
 	db = _db
 	fmt.Printf("%s", serverStartMsg)
-	http.HandleFunc("/", status) // default to list
 	http.HandleFunc("/create", create)
 	http.HandleFunc("/run/", run)
 	http.HandleFunc("/complete/", complete)
-	http.HandleFunc("/status", status)
+	http.HandleFunc("/status/", status)
 	http.HandleFunc("/history/", history)
 	host := fmt.Sprintf("localhost:%s", strconv.Itoa(opts.Port))
 	log.Fatal(http.ListenAndServe(host, nil))
@@ -56,19 +53,31 @@ func serverRestart(sys *System, opts *Options) {
 
 // create yooo
 func create(w http.ResponseWriter, r *http.Request) {
+	type idResponse struct {
+		ID string `json:"id"`
+	}
 	if r.Method == "GET" {
 		rand.Seed(time.Now().UTC().UnixNano())
 		h := sha256.New()
 		randomInt := rand.Intn(10000000)
 		h.Write([]byte(fmt.Sprintf("%d", randomInt)))
-		key := fmt.Sprintf("%x", h.Sum(nil)[:3])
-		fmt.Fprintf(w, string(key))
-		_ = initEntry(key, db)
+		id := fmt.Sprintf("%x", h.Sum(nil)[:3])
+		err := initEntry(id, db)
+		if err != nil {
+			http.Error(w, "failed to create entry", http.StatusForbidden)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_id := idResponse{ID: id}
+		idJSON, err := json.Marshal(_id)
+		if err != nil {
+			http.Error(w, "failed to create entry", http.StatusForbidden)
+		}
+		w.Write(idJSON)
 	}
 }
 
 // getKey extracts a job key and returns an error if invalid url
-func getKey(label string, r *http.Request) (string, error) {
+func getID(label string, r *http.Request) (string, error) {
 	regex := fmt.Sprintf("^/(%s)/([a-zA-Z0-9]+)$", label)
 	var validPath = regexp.MustCompile(regex)
 	m := validPath.FindStringSubmatch(r.URL.Path)
@@ -80,38 +89,42 @@ func getKey(label string, r *http.Request) (string, error) {
 
 // status returns the status of the job
 func status(w http.ResponseWriter, r *http.Request) {
-	key, err := getKey("status", r)
+	id, err := getID("status", r)
+	status, err := getStatus(id, db)
+	statusJSON, err := json.Marshal(status)
 	if err != nil {
-		fmt.Println("error")
+		fmt.Println("Error retrieving history")
 	}
-	status, err := getStatus(key, db)
-	fmt.Println(status)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(statusJSON)
 }
 
 // run some things
 func run(w http.ResponseWriter, r *http.Request) {
-	key, err := getKey("run", r)
+	id, err := getID("run", r)
 	if err != nil {
 		fmt.Println("error")
 	}
-	setStatus(key, "running", time.Now(), db)
+	setStatus(id, "running", time.Now(), db)
 }
 
 // complete
 func complete(w http.ResponseWriter, r *http.Request) {
-	key, err := getKey("complete", r)
+	id, err := getID("complete", r)
 	if err != nil {
 		fmt.Println("error")
 	}
-	setStatus(key, "complete", time.Now(), db)
+	setStatus(id, "complete", time.Now(), db)
 }
 
 // history returns the full history of the job
 func history(w http.ResponseWriter, r *http.Request) {
-	key, err := getKey("history", r)
+	id, err := getID("history", r)
+	history, err := getHistory(id, db)
+	historyJSON, err := json.Marshal(history)
 	if err != nil {
-		fmt.Println("error")
+		fmt.Println("Error retrieving history")
 	}
-	history, err := getHistory(key, db)
-	fmt.Println(history)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(historyJSON)
 }
