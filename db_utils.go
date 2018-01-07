@@ -42,20 +42,43 @@ func setStatus(key string, statusStr string, date time.Time, db *bolt.DB) error 
 		}
 		return nil
 	})
+
+	//set history
+	history, err := getHistory(key, db)
+	history = append(history, s)
+	historyBytes, err := json.Marshal(history)
+	err = db.Update(func(tx *bolt.Tx) error {
+		err := tx.Bucket([]byte(key)).Put([]byte("history"),
+			historyBytes)
+		if err != nil {
+			return fmt.Errorf("could not update run: %v", err)
+		}
+		return nil
+	})
+
 	return err
 }
 
 // getStatus grabs the status of the job
-func getStatus(key string, db *bolt.DB) error {
+func getStatus(key string, db *bolt.DB) (*Entry, error) {
+	status := Entry{}
 	err := db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(key))
-		b.ForEach(func(k, v []byte) error {
-			fmt.Println(string(k), string(v))
-			return nil
-		})
+		b := tx.Bucket([]byte(key)).Get([]byte("status"))
+		json.Unmarshal(b, &status)
 		return nil
 	})
-	return err
+	return &status, err
+}
+
+// getHistory grabs the status of the job
+func getHistory(key string, db *bolt.DB) ([]Entry, error) {
+	history := []Entry{}
+	err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(key)).Get([]byte("history"))
+		json.Unmarshal(b, &history)
+		return nil
+	})
+	return history, err
 }
 
 // setupDB

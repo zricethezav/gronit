@@ -41,7 +41,7 @@ func serverStart(sys *System, opts *Options, _db *bolt.DB) {
 	http.HandleFunc("/run/", run)
 	http.HandleFunc("/complete/", complete)
 	http.HandleFunc("/status", status)
-	http.HandleFunc("/history", history)
+	http.HandleFunc("/history/", history)
 	host := fmt.Sprintf("localhost:%s", strconv.Itoa(opts.Port))
 	log.Fatal(http.ListenAndServe(host, nil))
 }
@@ -84,7 +84,8 @@ func status(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("error")
 	}
-	getStatus(key, db)
+	status, err := getStatus(key, db)
+	fmt.Println(status)
 }
 
 // run some things
@@ -107,8 +108,10 @@ func complete(w http.ResponseWriter, r *http.Request) {
 
 // history returns the full history of the job
 func history(w http.ResponseWriter, r *http.Request) {
-	_, err := getKey("history", r)
+	key, err := getKey("history", r)
 	if err != nil {
 		fmt.Println("error")
 	}
+	history, err := getHistory(key, db)
+	fmt.Println(history)
 }
