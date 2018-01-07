@@ -39,6 +39,7 @@ func serverStart(sys *System, opts *Options, _db *bolt.DB) {
 	http.HandleFunc("/complete/", complete)
 	http.HandleFunc("/status/", status)
 	http.HandleFunc("/history/", history)
+	http.HandleFunc("/summary/", summary)
 	host := fmt.Sprintf("localhost:%s", strconv.Itoa(opts.Port))
 	log.Fatal(http.ListenAndServe(host, nil))
 }
@@ -51,7 +52,7 @@ func serverRestart(sys *System, opts *Options) {
 	// TODO find process server running on and restart
 }
 
-// create yooo
+// create new job monitor
 func create(w http.ResponseWriter, r *http.Request) {
 	type idResponse struct {
 		ID string `json:"id"`
@@ -62,7 +63,7 @@ func create(w http.ResponseWriter, r *http.Request) {
 		randomInt := rand.Intn(10000000)
 		h.Write([]byte(fmt.Sprintf("%d", randomInt)))
 		id := fmt.Sprintf("%x", h.Sum(nil)[:3])
-		err := initEntry(id, db)
+		err := initEntry(id, db, time.Now())
 		if err != nil {
 			http.Error(w, "failed to create entry", http.StatusForbidden)
 		}
@@ -76,27 +77,15 @@ func create(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getKey extracts a job key and returns an error if invalid url
+// getID extracts a job id and returns an error if invalid url
 func getID(label string, r *http.Request) (string, error) {
 	regex := fmt.Sprintf("^/(%s)/([a-zA-Z0-9]+)$", label)
 	var validPath = regexp.MustCompile(regex)
 	m := validPath.FindStringSubmatch(r.URL.Path)
 	if m == nil {
-		return "", fmt.Errorf("could not extract key from path %s", r.URL.Path)
+		return "", fmt.Errorf("could not extract id from path %s", r.URL.Path)
 	}
 	return m[2], nil
-}
-
-// status returns the status of the job
-func status(w http.ResponseWriter, r *http.Request) {
-	id, err := getID("status", r)
-	status, err := getStatus(id, db)
-	statusJSON, err := json.Marshal(status)
-	if err != nil {
-		fmt.Println("Error retrieving history")
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(statusJSON)
 }
 
 // run some things
@@ -117,6 +106,18 @@ func complete(w http.ResponseWriter, r *http.Request) {
 	setStatus(id, "complete", time.Now(), db)
 }
 
+// status returns the status of the job
+func status(w http.ResponseWriter, r *http.Request) {
+	id, err := getID("status", r)
+	status, err := getStatus(id, db)
+	statusJSON, err := json.Marshal(status)
+	if err != nil {
+		fmt.Println("Error retrieving history")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(statusJSON)
+}
+
 // history returns the full history of the job
 func history(w http.ResponseWriter, r *http.Request) {
 	id, err := getID("history", r)
@@ -127,4 +128,16 @@ func history(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(historyJSON)
+}
+
+// summary returns the summary of the job
+func summary(w http.ResponseWriter, r *http.Request) {
+	id, err := getID("summary", r)
+	summary, err := getSummary(id, db)
+	summaryJSON, err := json.Marshal(summary)
+	if err != nil {
+		fmt.Println("Error retrieving history")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(summaryJSON)
 }

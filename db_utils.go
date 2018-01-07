@@ -12,13 +12,31 @@ type Entry struct {
 	Time   time.Time `json:"time"`
 }
 
-// initEntry
-func initEntry(id string, db *bolt.DB) error {
+type Created struct {
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Summary struct {
+	JobCount                int       `json:"job_count"`
+	RunCount                int       `json:"run_count"`
+	CompletionCount         int       `json:"completion_count"`
+	AverageTimeToCompletion time.Time `json:"average_time_to_completion"`
+	CreatedAt               time.Time `json:"created_at"`
+}
+
+// initEntry create entry for new job
+func initEntry(id string, db *bolt.DB, date time.Time) error {
 	var err error
+	createdAt := Created{CreatedAt: date}
+	createdAtBytes, err := json.Marshal(createdAt)
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(id))
+		jobBucket, err := tx.CreateBucketIfNotExists([]byte(id))
 		if err != nil {
 			return fmt.Errorf("could not bucket for %s: %v", id, err)
+		}
+		err = jobBucket.Put([]byte("created"), createdAtBytes)
+		if err != nil {
+			return fmt.Errorf("failed to update status for %s: %v", id, err)
 		}
 		return nil
 	})
@@ -29,23 +47,9 @@ func initEntry(id string, db *bolt.DB) error {
 func setStatus(id string, statusStr string, date time.Time, db *bolt.DB) error {
 	entry := Entry{Status: statusStr, Time: date}
 	statusBytes, err := json.Marshal(entry)
-	if err != nil {
-		return fmt.Errorf("failed to marshal status into json: %v", err)
-	}
-	err = db.Update(func(tx *bolt.Tx) error {
-		jobBucket := tx.Bucket([]byte(id))
-		if jobBucket == nil {
-			return fmt.Errorf("failed to find record of %s", id)
-		}
-		err := jobBucket.Put([]byte("status"), statusBytes)
-		if err != nil {
-			return fmt.Errorf("failed to update status for %s: %v", id, err)
-		}
-		return nil
-	})
+	err = setDataBytes(id, "status", statusBytes, db)
 	err = setHistory(id, &entry, db)
 	return err
-
 }
 
 // setHistory updates the history of a job entry
@@ -53,37 +57,15 @@ func setHistory(id string, entry *Entry, db *bolt.DB) error {
 	history, err := getHistory(id, db)
 	history = append(history, *entry)
 	historyBytes, err := json.Marshal(history)
-	if err != nil {
-		return fmt.Errorf("failed to marshal history into json: %v", err)
-	}
-	err = db.Update(func(tx *bolt.Tx) error {
-		jobBucket := tx.Bucket([]byte(id))
-		if jobBucket == nil {
-			return fmt.Errorf("failed to find record of %s", id)
-		}
-		err := jobBucket.Put([]byte("history"),
-			historyBytes)
-		if err != nil {
-			return fmt.Errorf("failed to update history for  %s: %v", id, err)
-		}
-		return nil
-	})
+	err = setDataBytes(id, "history", historyBytes, db)
 	return err
 }
 
 // getStatus grabs the status of the job
 func getStatus(id string, db *bolt.DB) (*Entry, error) {
 	status := Entry{}
-	err := db.View(func(tx *bolt.Tx) error {
-		jobBucket := tx.Bucket([]byte(id))
-		if jobBucket == nil {
-			return fmt.Errorf("failed to find record of %s", id)
-		}
-		statusBytes := jobBucket.Get([]byte("status"))
-		json.Unmarshal(statusBytes, &status)
-		return nil
-	})
-
+	statusBytes, err := getDataBytes(id, "status", db)
+	json.Unmarshal(statusBytes, &status)
 	if err != nil {
 		return nil, err
 	}
@@ -93,19 +75,58 @@ func getStatus(id string, db *bolt.DB) (*Entry, error) {
 // getHistory grabs the status of the job
 func getHistory(id string, db *bolt.DB) ([]Entry, error) {
 	history := []Entry{}
+	historyBytes, err := getDataBytes(id, "history", db)
+	json.Unmarshal(historyBytes, &history)
+	if err != nil {
+		return nil, err
+	}
+	return history, nil
+}
+
+// getSummary summarizes job entry stats
+// TODO
+func getSummary(id string, db *bolt.DB) (*Summary, error) {
+	history, err := getHistory(id, db)
+	createdBytes, err := getDataBytes(id, "created", db)
+	created := Created{}
+	json.Unmarshal(createdBytes, &created)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(history)
+	fmt.Println(created)
+	return nil, nil
+}
+
+// getDataBytes is a generic data aquisition helper
+func getDataBytes(id string, bucket string, db *bolt.DB) ([]byte, error) {
+	var data []byte
 	err := db.View(func(tx *bolt.Tx) error {
 		jobBucket := tx.Bucket([]byte(id))
 		if jobBucket == nil {
 			return fmt.Errorf("failed to find record of %s", id)
 		}
-		b := jobBucket.Get([]byte("history"))
-		json.Unmarshal(b, &history)
+		data = jobBucket.Get([]byte(bucket))
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	return history, nil
+	return data, err
+}
+
+// setDataBytes generic set to bucket
+func setDataBytes(id string, bucket string, data []byte, db *bolt.DB) error {
+	err := db.Update(func(tx *bolt.Tx) error {
+		jobBucket := tx.Bucket([]byte(id))
+		if jobBucket == nil {
+			return fmt.Errorf("failed to find record of %s", id)
+		}
+		err := jobBucket.Put([]byte(bucket),
+			data)
+		if err != nil {
+			return fmt.Errorf("failed to update history for  %s: %v", id, err)
+		}
+		return nil
+	})
+	return err
 }
 
 // setupDB
