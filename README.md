@@ -1,40 +1,40 @@
 # Gronit
-#### A Cron monitor and interface written in Go.
+#### A Cron monitor written in Go.
 
 ##### Features:
- * Remotely update crontabs
- * View active crontabs in a browser
- * Add cron jobs to crontab locally via json or yaml
- * View run logs of jobs in a browser 
+ * Update and check job status remotely
+ * View statistics of jobs
+ * Bare bones alternative to services like Cronitor
 
-##### Server:
+##### Installing:
 ```
-$ ./gronit start
+$ go get github.com/zricethezav/gronit
 ```
-* view your crontab: ```curl localhost:3231/list``` 
-* add jobs to crontab via curl: 
-	```
-    curl -H 'Content-Type:application/json' -d \
-	"[{\"name\":\"example_post\",
- 	\"second\":\"*\",
- 	\"hour\":\"*\",
- 	\"minute\":\"*\",
- 	\"day\":\"*\",
- 	\"month\":\"*\",
- 	\"command\":\"echo post\"}]" http://localhost:3231/add
-    ```  
- 	* `/add` accepts POST requests with a JSON array containing job objects. See example request [here](https://github.com/zricethezav/gronit/blob/master/samples/sample.json)
 
-##### Local Usage:
-You can use gronit to add cron jobs to your crontab in more readable forms.
+##### Usage: 
 
-<b>Yaml</b>: ```./gronit --loadyaml {yamlfile}```
+```
+$ ./gronit
+```
+This will start a server on default port `3231`. Change the port with `-p` or `--port` option.
 
-<b>JSON</b>: ```./gronit --loadjson {jsonfile}```
+Generate a job tracker (with a gronit server running):
+```
+$ curl 127.0.0.1:3231/create
+{"id":"f7a324"}
+```
+`/create` generates a job tracking token. Now we can wrap any command with gronit.
 
-	   
-### TODO: 
-* Assign keys to individual jobs so they can be remotely opperated on
-* Include hook like cronitor has to update status of the job
-* Finish handlers: remove, logs, update
+```
+# sample crontab
+*/2 * * * * curl -s 127.0.0.1:3231/run/f7a324 && sleep `echo $((1 + RANDOM \% 5))` && curl -s 127.0.0.1:3231/complete/f7a324
+
+```
+#### API
+* `/create` generate new job id
+* `/run/{id}` update jobs's status to be 'running'
+* `/complete/{id}` update jobs's status to be 'complete'
+* `/status/{id}` status of job
+* `/summary/{id}` job statistics for a job
+* `/history/{id}` full list of status updates for a job
 
