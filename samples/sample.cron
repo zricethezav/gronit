@@ -1,2 +1,0 @@
-* * * * * echo "cron out"
-* 1,2,3,4,5 * * * echo "cron out"
