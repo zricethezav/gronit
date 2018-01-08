@@ -17,10 +17,10 @@ type Created struct {
 }
 
 type Summary struct {
-	JobCount                int       `json:"job_count"`
+	StatusCount             int       `json:"status_count"`
 	RunCount                int       `json:"run_count"`
 	CompletionCount         int       `json:"completion_count"`
-	AverageTimeToCompletion time.Time `json:"average_time_to_completion"`
+	AverageTimeToCompletion int64     `json:"average_time_to_completion"`
 	CreatedAt               time.Time `json:"created_at"`
 }
 
@@ -84,8 +84,9 @@ func getHistory(id string, db *bolt.DB) ([]Entry, error) {
 }
 
 // getSummary summarizes job entry stats
-// TODO
 func getSummary(id string, db *bolt.DB) (*Summary, error) {
+	var runTimeSum float64
+	var previousEntry Entry
 	history, err := getHistory(id, db)
 	createdBytes, err := getDataBytes(id, "created", db)
 	created := Created{}
@@ -93,9 +94,34 @@ func getSummary(id string, db *bolt.DB) (*Summary, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(history)
-	fmt.Println(created)
-	return nil, nil
+	completionCount := 0
+	realCompletedJobCount := 0
+	runCount := 0
+
+	for _, entry := range history {
+		if entry.Status == "running" {
+			runCount += 1
+		} else if entry.Status == "complete" {
+			completionCount += 1
+			if previousEntry.Status == "running" {
+				runTimeSum += float64(entry.Time.Sub(previousEntry.Time))
+				realCompletedJobCount += 1
+			}
+		}
+		previousEntry = entry
+	}
+
+	avg := int64(time.Duration(
+		runTimeSum/float64(realCompletedJobCount)) / time.Millisecond)
+
+	summary := Summary{
+		StatusCount:             len(history),
+		RunCount:                runCount,
+		CompletionCount:         completionCount,
+		CreatedAt:               created.CreatedAt,
+		AverageTimeToCompletion: avg,
+	}
+	return &summary, nil
 }
 
 // getDataBytes is a generic data aquisition helper
