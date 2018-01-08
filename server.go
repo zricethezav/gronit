@@ -1,14 +1,17 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"github.com/boltdb/bolt"
 	"log"
+	"math/rand"
 	"net/http"
-	"os/exec"
+	"regexp"
 	"strconv"
 	"sync"
+	"time"
 )
 
 const serverStartMsg = `
@@ -24,17 +27,19 @@ const serverStartMsg = `
 `
 
 var mu sync.Mutex
+var db *bolt.DB
 
 // serverStart starts the gronit server which routes a few
 // paths: add, update, list, remove, logs
-func serverStart(sys *System, opts *Options) {
+func serverStart(sys *System, opts *Options, _db *bolt.DB) {
+	db = _db
 	fmt.Printf("%s", serverStartMsg)
-	http.HandleFunc("/", list) // default to list
-	http.HandleFunc("/add", add)
-	http.HandleFunc("/update", update)
-	http.HandleFunc("/list", list)
-	http.HandleFunc("/remove", remove)
-	http.HandleFunc("/logs", logs)
+	http.HandleFunc("/create", create)
+	http.HandleFunc("/run/", run)
+	http.HandleFunc("/complete/", complete)
+	http.HandleFunc("/status/", status)
+	http.HandleFunc("/history/", history)
+	http.HandleFunc("/summary/", summary)
 	host := fmt.Sprintf("localhost:%s", strconv.Itoa(opts.Port))
 	log.Fatal(http.ListenAndServe(host, nil))
 }
@@ -47,57 +52,92 @@ func serverRestart(sys *System, opts *Options) {
 	// TODO find process server running on and restart
 }
 
-func add(w http.ResponseWriter, r *http.Request) {
-	var tasks []Task
-	if r.Method == "POST" {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Error reading request body", http.StatusInternalServerError)
-			return
-		}
-		fmt.Fprintf(w, string(body))
-		err = json.Unmarshal(body, &tasks)
-		if err != nil {
-			http.Error(w, "Error reading request body into Tasks", http.StatusInternalServerError)
-			return
-		}
+// create new job monitor
+func create(w http.ResponseWriter, r *http.Request) {
+	type idResponse struct {
+		ID string `json:"id"`
 	}
-
-	applyMonitor(tasks)
-	mu.Lock()
-	// TODO iter tasks check if any commands want to be monitored
-	// TODO respond with complete hash
-	tasksToCron(tasks, sys, opts)
-	mu.Unlock()
-}
-
-func update(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	// TODO
-	mu.Unlock()
-}
-
-func list(w http.ResponseWriter, r *http.Request) {
-	var crontab []byte
-	var err error
 	if r.Method == "GET" {
-		if crontab, err = exec.Command("crontab", "-l").Output(); err != nil {
-			log.Fatal(err)
+		rand.Seed(time.Now().UTC().UnixNano())
+		h := sha256.New()
+		randomInt := rand.Intn(10000000)
+		h.Write([]byte(fmt.Sprintf("%d", randomInt)))
+		id := fmt.Sprintf("%x", h.Sum(nil)[:3])
+		err := initEntry(id, db, time.Now())
+		if err != nil {
+			http.Error(w, "failed to create entry", http.StatusForbidden)
 		}
-		fmt.Fprintf(w, string(crontab))
+		w.Header().Set("Content-Type", "application/json")
+		_id := idResponse{ID: id}
+		idJSON, err := json.Marshal(_id)
+		if err != nil {
+			http.Error(w, "failed to create entry", http.StatusForbidden)
+		}
+		w.Write(idJSON)
 	}
 }
 
-func remove(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	// TODO
-	mu.Unlock()
+// getID extracts a job id and returns an error if invalid url
+func getID(label string, r *http.Request) (string, error) {
+	regex := fmt.Sprintf("^/(%s)/([a-zA-Z0-9]+)$", label)
+	var validPath = regexp.MustCompile(regex)
+	m := validPath.FindStringSubmatch(r.URL.Path)
+	if m == nil {
+		return "", fmt.Errorf("could not extract id from path %s", r.URL.Path)
+	}
+	return m[2], nil
 }
 
-func logs(w http.ResponseWriter, r *http.Request) {
-	// TODO finish and put in handlers
+// run some things
+func run(w http.ResponseWriter, r *http.Request) {
+	id, err := getID("run", r)
+	if err != nil {
+		fmt.Println("error")
+	}
+	setStatus(id, "running", time.Now(), db)
 }
 
+// complete
 func complete(w http.ResponseWriter, r *http.Request) {
-	// TODO finish and put in handlers
+	id, err := getID("complete", r)
+	if err != nil {
+		fmt.Println("error")
+	}
+	setStatus(id, "complete", time.Now(), db)
+}
+
+// status returns the status of the job
+func status(w http.ResponseWriter, r *http.Request) {
+	id, err := getID("status", r)
+	status, err := getStatus(id, db)
+	statusJSON, err := json.Marshal(status)
+	if err != nil {
+		fmt.Println("Error retrieving history")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(statusJSON)
+}
+
+// history returns the full history of the job
+func history(w http.ResponseWriter, r *http.Request) {
+	id, err := getID("history", r)
+	history, err := getHistory(id, db)
+	historyJSON, err := json.Marshal(history)
+	if err != nil {
+		fmt.Println("Error retrieving history")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(historyJSON)
+}
+
+// summary returns the summary of the job
+func summary(w http.ResponseWriter, r *http.Request) {
+	id, err := getID("summary", r)
+	summary, err := getSummary(id, db)
+	summaryJSON, err := json.Marshal(summary)
+	if err != nil {
+		fmt.Println("Error retrieving history")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(summaryJSON)
 }
