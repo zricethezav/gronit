@@ -31,7 +31,7 @@ var db *bolt.DB
 
 // serverStart starts the gronit server which routes a few
 // paths: add, update, list, remove, logs
-func serverStart(sys *System, opts *Options, _db *bolt.DB) {
+func serverStart(opts *Options, _db *bolt.DB) {
 	db = _db
 	fmt.Printf("%s", serverStartMsg)
 	http.HandleFunc("/create", create)
@@ -42,14 +42,6 @@ func serverStart(sys *System, opts *Options, _db *bolt.DB) {
 	http.HandleFunc("/summary/", summary)
 	host := fmt.Sprintf("localhost:%s", strconv.Itoa(opts.Port))
 	log.Fatal(http.ListenAndServe(host, nil))
-}
-
-func serverStop(sys *System, opts *Options) {
-	// TODO find process server running on and stop
-}
-
-func serverRestart(sys *System, opts *Options) {
-	// TODO find process server running on and restart
 }
 
 // create new job monitor

@@ -4,14 +4,12 @@ package main
 // [go]cron[monitor]
 
 import (
-	_ "flag"
 	"log"
 	"os"
 )
 
 const EMPTYSTR string = ""
 
-var sys *System
 var opts *Options
 
 func main() {
@@ -23,7 +21,6 @@ func main() {
 	}
 	defer db.Close()
 
-	sys = defaultSys()
-	opts = parseOptions(sys, args)
-	serverStart(sys, opts, db)
+	opts = parseOptions(args)
+	serverStart(opts, db)
 }
