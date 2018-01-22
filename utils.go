@@ -155,6 +155,13 @@ func setDataBytes(id string, bucket string, data []byte, db *bolt.DB) error {
 	return err
 }
 
+// deletes bucket
+func deleteBucket(id string, db *bolt.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		return tx.DeleteBucket([]byte(id))
+	})
+}
+
 // setupDB
 func setupDB() (*bolt.DB, error) {
 	db, err := bolt.Open("gronit.db", 0600, nil)

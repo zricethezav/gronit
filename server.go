@@ -22,7 +22,7 @@ const serverStartMsg = `
  | |__| | | | (_) | | | | | |_ 
   \_____|_|  \___/|_| |_|_|\__|
 
-     Cron Monitoring System
+       Cron Monitoring
 
 `
 
@@ -37,6 +37,7 @@ func serverStart(opts *Options, _db *bolt.DB) {
 	http.HandleFunc("/create", create)
 	http.HandleFunc("/run/", run)
 	http.HandleFunc("/complete/", complete)
+	http.HandleFunc("/clear/", clear)
 	http.HandleFunc("/status/", status)
 	http.HandleFunc("/history/", history)
 	http.HandleFunc("/summary/", summary)
@@ -60,8 +61,7 @@ func create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "failed to create entry", http.StatusForbidden)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_id := idResponse{ID: id}
-		idJSON, err := json.Marshal(_id)
+		idJSON, err := json.Marshal(idResponse{ID: id})
 		if err != nil {
 			http.Error(w, "failed to create entry", http.StatusForbidden)
 		}
@@ -96,6 +96,15 @@ func complete(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("error")
 	}
 	setStatus(id, "complete", time.Now(), db)
+}
+
+// clear
+func clear(w http.ResponseWriter, r *http.Request) {
+	id, err := getID("clear", r)
+	if err != nil {
+		fmt.Println("error")
+	}
+	deleteBucket(id, db)
 }
 
 // status returns the status of the job
