@@ -30,11 +30,16 @@ $ curl 127.0.0.1:3231/create
 */2 * * * * curl -s 127.0.0.1:3231/run/f7a324 && sleep `echo $((1 + RANDOM \% 5))` && curl -s 127.0.0.1:3231/complete/f7a324
 
 ```
-#### API
+#### API 
+GET
 * `/create` generate new job id
 * `/run/{id}` update jobs's status to be 'running'
 * `/complete/{id}` update jobs's status to be 'complete'
 * `/status/{id}` status of job
+  * sample response:```{"status":"complete","time":"2018-01-10T13:36:05.197347-06:00"}```
 * `/summary/{id}` job statistics for a job
+  * sample response: ```{"status_count":24,"run_count":12,"completion_count":12,"average_time_to_completion":2200,"created_at":"2018-01-10T13:08:11.675697-06:00"}```
 * `/history/{id}` full list of status updates for a job
+  * sample response:
+  ```[{"status":"running","time":"2018-01-10T13:10:00.281757-06:00"},{"status":"complete","time":"2018-01-10T13:10:01.408825-06:00"}]```
 
