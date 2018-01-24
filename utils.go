@@ -87,6 +87,7 @@ func getHistory(id string, db *bolt.DB) ([]Entry, error) {
 func getSummary(id string, db *bolt.DB) (*Summary, error) {
 	var runTimeSum float64
 	var previousEntry Entry
+	var avg int64
 	history, err := getHistory(id, db)
 	createdBytes, err := getDataBytes(id, "created", db)
 	created := Created{}
@@ -111,8 +112,12 @@ func getSummary(id string, db *bolt.DB) (*Summary, error) {
 		previousEntry = entry
 	}
 
-	avg := int64(time.Duration(
-		runTimeSum/float64(realCompletedJobCount)) / time.Millisecond)
+	if runCount != 0 {
+		avg = int64(time.Duration(
+			runTimeSum/float64(realCompletedJobCount)) / time.Millisecond)
+	} else {
+		avg = 0
+	}
 
 	summary := Summary{
 		StatusCount:             len(history),
