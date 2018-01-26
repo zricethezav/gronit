@@ -7,20 +7,23 @@ import (
 )
 
 const usage = `usage: ./gronit [options]
+Arguments:
+	runserver
 	
 Options:
     -p --port 		Port to run server on
     -h --help 		Display this message
+	-j --jobid		Job Id
 
 `
 
 const defaultPort = 3231
 
 type Options struct {
-	Start   bool
-	Stop    bool
-	Restart bool
-	Port    int
+	StartServer bool
+	Restart     bool
+	Port        int
+	JobId       string
 }
 
 // help prints the usage string and exits
@@ -63,13 +66,20 @@ func parseOptions(args []string) *Options {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch arg {
+		case "-j", "--job":
+			opts.JobId = optionsNextString(args, &i)
 		case "-p", "--port":
 			opts.Port = optionsNextInt(args, &i)
 		case "-h", "--help":
 			help()
 			return nil
+		case "startserver":
+			opts.StartServer = True
+		case "exec":
+			cmd = optionsNextString(args, &i)
+
 		default:
-			fmt.Printf("Uknown option %s\n\n", arg)
+			fmt.Printf("Unknown option %s\n\n", arg)
 			help()
 			return nil
 		}

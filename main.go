@@ -22,5 +22,11 @@ func main() {
 	defer db.Close()
 
 	opts = parseOptions(args)
-	serverStart(opts, db)
+	if opts.StartServer {
+		// server
+		serverStart(opts, db)
+	} else {
+		// client
+		runCmd(opts)
+	}
 }

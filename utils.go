@@ -169,9 +169,13 @@ func deleteBucket(id string, db *bolt.DB) error {
 
 // setupDB
 func setupDB() (*bolt.DB, error) {
-	db, err := bolt.Open("gronit.db", 0600, nil)
+	db, err := bolt.Open("~/.gronit/gronit.db", 0600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not open db, %v", err)
 	}
 	return db, nil
+}
+
+func runCmd(opts *Options, cmd string) {
+
 }
