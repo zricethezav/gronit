@@ -34,6 +34,7 @@ var db *bolt.DB
 func serverStart(opts *Options, _db *bolt.DB) {
 	db = _db
 	fmt.Printf("%s", serverStartMsg)
+	http.HandleFunc("/", create)
 	http.HandleFunc("/create", create)
 	http.HandleFunc("/run/", run)
 	http.HandleFunc("/complete/", complete)
