@@ -12,9 +12,6 @@ const EMPTYSTR string = ""
 
 var opts *Options
 
-const AWS_KEY = "***REMOVED***"
-const AWS_SECRET = "99432bfewaf823ec3294e231"
-
 
 func main() {
 	args := os.Args[1:]
