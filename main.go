@@ -10,9 +10,6 @@ import (
 
 const EMPTYSTR string = ""
 
-const AWS_KEY = "AKIALALEMEL33243OLIAE"
-const AWS_SECRET = "99432bfewaf823ec3294e231"
-
 var opts *Options
 
 func main() {
