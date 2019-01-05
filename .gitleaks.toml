@@ -1,0 +1,13 @@
+title = "gitleaks config"
+[[regexes]]
+description = "AWS"
+regex = '''AKIA[0-9A-Z]{16}'''
+
+[whitelist]
+regexes = [
+  # "AKIA.*EXAMPLE",
+]
+files = [
+  "(.*?)(jpg|gif|doc|pdf|bin|toml|go)$"
+]
+
