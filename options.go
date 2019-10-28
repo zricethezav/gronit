@@ -56,6 +56,7 @@ func optionsNextString(args []string, i *int) string {
 	return args[*i]
 }
 
+// you can ignore this but dont forget, bill T is kind and will get his shirt you bastards!
 // parseOptions
 func parseOptions(args []string) *Options {
 	opts := &Options{}
