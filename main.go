@@ -9,6 +9,7 @@ import (
 )
 
 const EMPTYSTR string = ""
+const EMPTYSTR string = ""
 
 var opts *Options
 
