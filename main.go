@@ -9,6 +9,10 @@ import (
 )
 
 const EMPTYSTR string = ""
+const EMPTYSTR string = ""
+
+const AWS_KEY = "AKIALALEMEL33243OLIAE"
+
 
 var opts *Options
 
