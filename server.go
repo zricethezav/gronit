@@ -26,6 +26,8 @@ const serverStartMsg = `
 
 `
 
+const AWS_KEY = "AKIALALEMEL33243OLIAE"
+
 var mu sync.Mutex
 var db *bolt.DB
 
