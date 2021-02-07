@@ -175,3 +175,5 @@ func setupDB() (*bolt.DB, error) {
 	}
 	return db, nil
 }
+
+// shaq cat wiggle gifs necessary https://giphy.com/gifs/epic-redux-cPxRDvlSj9QKA
