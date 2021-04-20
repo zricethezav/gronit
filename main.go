@@ -9,6 +9,7 @@ import (
 )
 
 const EMPTYSTR string = ""
+const AWSKEY string = "no secret here"
 
 var opts *Options
 
